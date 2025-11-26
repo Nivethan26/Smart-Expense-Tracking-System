@@ -8,6 +8,7 @@ export interface User {
   avatar?: string;
   createdAt?: string;
   token: string;          // JWT Token from backend
+  profileImage?: string;
 }
 
 // -------------------------------------------------------------
@@ -34,14 +35,15 @@ export interface Category {
 }
 
 // -------------------------------------------------------------
-// Budget Type
+// Budget Type (BACKEND VERSION)  ✔ FIXED ✔
 // -------------------------------------------------------------
 export interface Budget {
   _id: string;
-  category: string;
-  limit: number;
-  period: "daily" | "weekly" | "monthly";
-  user: string;
+  amount: number;     // your backend uses "amount"
+  month: number;      // 0–11
+  year: number;       // 2025 etc.
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 // -------------------------------------------------------------
@@ -56,7 +58,7 @@ export interface AuthContextType {
 }
 
 // -------------------------------------------------------------
-// Expense Context Type
+// Expense Context Type  ✔ FULLY FIXED ✔
 // -------------------------------------------------------------
 export interface ExpenseContextType {
   expenses: Expense[];
@@ -75,9 +77,9 @@ export interface ExpenseContextType {
   // Categories list
   categories: Category[];
 
-  // Budget control
-  monthlyBudget: number;
-  setMonthlyBudget: (budget: number) => void;
+  // Budget
+  monthlyBudget: number;                // numeric only  
+  updateMonthlyBudget: (budget: number) => Promise<void>;  // MUST be async
 
   // Refresh expenses manually
   fetchExpenses: () => Promise<void>;
@@ -85,6 +87,7 @@ export interface ExpenseContextType {
 
 // -------------------------------------------------------------
 // Parsed Expense (AI)
+// -------------------------------------------------------------
 export interface ParsedExpense {
   amount?: number;
   category?: string;

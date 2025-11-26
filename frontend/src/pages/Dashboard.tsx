@@ -6,11 +6,19 @@ import { PlusCircle, TrendingDown, TrendingUp, Wallet, RefreshCw } from 'lucide-
 import { Link } from 'react-router-dom';
 import { formatCurrency } from '@/utils/formatters';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, LineChart, Line, XAxis, YAxis, CartesianGrid } from 'recharts';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import heroImage from '@/assets/hero-dashboard.jpg';
+import { toast } from "sonner";
 
 const Dashboard = () => {
-  const { expenses, monthlyBudget } = useExpenses();
+
+  const { expenses, monthlyBudget, updateMonthlyBudget } = useExpenses();
+  const [budgetValue, setBudgetValue] = useState<number>(monthlyBudget);
+
+
+  // 🔥 Missing states fixed here
+  const [showBudgetModal, setShowBudgetModal] = useState(false);
+  const [newBudget, setNewBudget] = useState(String(monthlyBudget));
 
   // Get current + previous month
   const now = new Date();
@@ -40,7 +48,7 @@ const Dashboard = () => {
   const totalSpent = monthlyExpenses.reduce((sum, exp) => sum + exp.amount, 0);
   const prevMonthTotal = previousMonthExpenses.reduce((sum, exp) => sum + exp.amount, 0);
 
-  // % change: this month vs last month
+  // % change
   const percentageChange =
     prevMonthTotal === 0
       ? 100
@@ -51,7 +59,7 @@ const Dashboard = () => {
   const budgetLeft = monthlyBudget - totalSpent;
   const avgDailySpend = totalSpent / new Date().getDate();
 
-  // Pie chart category breakdown
+  // Pie Chart Data
   const categoryData = useMemo(() => {
     const totals: Record<string, number> = {};
     monthlyExpenses.forEach(exp => {
@@ -80,6 +88,17 @@ const Dashboard = () => {
     'hsl(280, 80%, 60%)',
     'hsl(340, 82%, 52%)'
   ];
+
+  const handleSaveBudget = async () => {
+    if (budgetValue <= 0) {
+      toast.error("Please enter a valid budget amount");
+      return;
+    }
+
+    await updateMonthlyBudget(budgetValue);
+    setShowBudgetModal(false);
+  };
+
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -120,6 +139,7 @@ const Dashboard = () => {
 
       {/* CARDS */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        
         {/* TOTAL SPENT */}
         <Card className="p-6 glass-card hover:shadow-lg transition-shadow animate-slide-up">
           <div className="flex items-start justify-between mb-4">
@@ -151,11 +171,20 @@ const Dashboard = () => {
             <div>
               <p className="text-sm text-muted-foreground mb-1">Budget Remaining</p>
               <h3 className="text-3xl font-bold">{formatCurrency(budgetLeft)}</h3>
+
+              <button
+                className="text-xs underline text-primary mt-2"
+                onClick={() => setShowBudgetModal(true)}
+              >
+                Edit Budget
+              </button>
             </div>
+
             <div className="gradient-success p-3 rounded-xl">
               <TrendingDown className="h-6 w-6 text-white" />
             </div>
           </div>
+
           <p className="text-sm text-muted-foreground">
             {((budgetLeft / monthlyBudget) * 100).toFixed(0)}% of budget left
           </p>
@@ -180,6 +209,7 @@ const Dashboard = () => {
 
       {/* CHARTS */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
         <Card className="p-6 glass-card">
           <h3 className="text-lg font-semibold mb-4">Spending by Category</h3>
           <div className="h-80">
@@ -218,6 +248,26 @@ const Dashboard = () => {
         </Card>
       </div>
 
+      {/* BUDGET ALERT */}
+      {
+        monthlyBudget === 0 && (
+          <div className="bg-yellow-100 border border-yellow-300 text-yellow-800 p-4 rounded-xl flex justify-between items-center mb-4">
+            <div>
+              <h3 className="text-lg font-semibold">Set Your Monthly Budget</h3>
+              <p className="text-sm">
+                You haven't added a monthly budget yet. Add one to track your limit.
+              </p>
+            </div>
+            <button
+              onClick={() => setShowBudgetModal(true)}
+              className="bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600"
+            >
+              Set Budget
+            </button>
+          </div>
+        )
+      }
+
       {/* RECENT EXPENSES */}
       <Card className="p-6 glass-card">
         <h3 className="text-lg font-semibold mb-4">Recent Expenses</h3>
@@ -244,6 +294,62 @@ const Dashboard = () => {
           </Button>
         </Link>
       </Card>
+
+      {/* EDIT BUDGET POPUP */}
+      {showBudgetModal && (
+        <div className="fixed inset-0 flex justify-center items-center bg-black/60 backdrop-blur-sm z-50 animate-fade-in">
+
+          <div className="bg-neutral-900 text-white p-6 rounded-xl shadow-xl w-96 border border-white/10 animate-scale-in">
+
+            {/* Title */}
+            <h2 className="text-xl font-semibold mb-4 text-center">
+              Enter Your Monthly Budget
+            </h2>
+
+            {/* INPUT FIELD */}
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 text-lg">
+                $
+              </span>
+
+              <input
+                type="text"
+                className="
+                  w-full pl-10 pr-4 py-3 
+                  bg-neutral-800 text-white 
+                  rounded-lg border border-neutral-700 
+                  focus:border-blue-500 focus:ring-2 focus:ring-blue-500/40
+                  outline-none transition-all
+                  remove-arrows
+                "
+                placeholder="Enter amount"
+                value={budgetValue}
+                onChange={(e) => {
+                  const numericValue = e.target.value.replace(/[^0-9]/g, ""); 
+                  setBudgetValue(Number(numericValue));
+                }}
+              />
+            </div>
+
+            {/* Buttons */}
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                className="px-4 py-2 bg-neutral-700 hover:bg-neutral-600 rounded-lg transition"
+                onClick={() => setShowBudgetModal(false)}
+              >
+                Cancel
+              </button>
+
+              <button
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition"
+                onClick={handleSaveBudget}
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

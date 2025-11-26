@@ -9,49 +9,100 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [monthlyBudget, setMonthlyBudget] = useState<number>(3000);
+  const [monthlyBudget, setMonthlyBudget] = useState<number>(0);
 
-  const API_URL = "http://localhost:5000/api/expenses";
+  const EXPENSE_API = "http://localhost:5000/api/expenses";
+  const BUDGET_API = "http://localhost:5000/api/budget";
 
-  // -------------------------------------------------------------
-  // LOAD EXPENSES ON PAGE MOUNT
-  // -------------------------------------------------------------
   useEffect(() => {
     fetchExpenses();
+    fetchMonthlyBudget();
   }, []);
 
-  const fetchExpenses = async () => {
+  // ------------------------------------------------------------------
+  // FETCH EXPENSES
+  // ------------------------------------------------------------------
+  const fetchExpenses = async (): Promise<void> => {
     try {
       const token = localStorage.getItem("token");
 
-      const res = await fetch(API_URL, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+      const res = await fetch(EXPENSE_API, {
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       const data = await res.json();
-
       if (!res.ok) {
         toast.error(data.message || "Failed to fetch expenses");
         return;
       }
 
       setExpenses(data);
-    } catch (error) {
-      console.error("Fetch error:", error);
-      toast.error("Server error. Could not load expenses.");
+    } catch (err) {
+      console.error(err);
+      toast.error("Server error loading expenses");
     }
   };
 
-  // -------------------------------------------------------------
-  // ADD EXPENSE
-  // -------------------------------------------------------------
-  const addExpense = async (expense: Omit<Expense, "_id" | "createdAt">) => {
+  // ------------------------------------------------------------------
+  // FETCH BUDGET
+  // ------------------------------------------------------------------
+  const fetchMonthlyBudget = async (): Promise<void> => {
     try {
       const token = localStorage.getItem("token");
 
-      const res = await fetch(API_URL, {
+      const res = await fetch(BUDGET_API, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      const data = await res.json();
+      setMonthlyBudget(data.amount ?? 0);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to load budget");
+    }
+  };
+
+  // ------------------------------------------------------------------
+  // UPDATE BUDGET
+  // ------------------------------------------------------------------
+  const updateMonthlyBudget = async (amount: number): Promise<void> => {
+    try {
+      const token = localStorage.getItem("token");
+
+      const res = await fetch(BUDGET_API, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ amount }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        toast.error("Failed to update budget");
+        return;
+      }
+
+      setMonthlyBudget(data.amount);
+      toast.success("Budget updated!");
+    } catch (err) {
+      console.error(err);
+      toast.error("Server error updating budget");
+    }
+  };
+
+  // ------------------------------------------------------------------
+  // ADD EXPENSE
+  // ------------------------------------------------------------------
+  const addExpense = async (
+    expense: Omit<Expense, "_id" | "createdAt" | "user">
+  ): Promise<void> => {
+    try {
+      const token = localStorage.getItem("token");
+
+      const res = await fetch(EXPENSE_API, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -61,7 +112,6 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({
       });
 
       const data = await res.json();
-
       if (!res.ok) {
         toast.error(data.message || "Failed to add expense");
         return;
@@ -70,19 +120,22 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({
       setExpenses((prev) => [data, ...prev]);
       toast.success("Expense added successfully!");
     } catch (err) {
-      console.error("Add error:", err);
-      toast.error("Server error while adding expense");
+      console.error(err);
+      toast.error("Server error adding expense");
     }
   };
 
-  // -------------------------------------------------------------
+  // ------------------------------------------------------------------
   // UPDATE EXPENSE
-  // -------------------------------------------------------------
-  const updateExpense = async (id: string, updatedData: Partial<Expense>) => {
+  // ------------------------------------------------------------------
+  const updateExpense = async (
+    id: string,
+    updatedData: Partial<Expense>
+  ): Promise<void> => {
     try {
       const token = localStorage.getItem("token");
 
-      const res = await fetch(`${API_URL}/${id}`, {
+      const res = await fetch(`${EXPENSE_API}/${id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -92,7 +145,6 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({
       });
 
       const data = await res.json();
-
       if (!res.ok) {
         toast.error(data.message || "Failed to update expense");
         return;
@@ -103,24 +155,22 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({
       );
 
       toast.success("Expense updated!");
-    } catch (error) {
-      console.error("Update error:", error);
-      toast.error("Server error while updating expense");
+    } catch (err) {
+      console.error(err);
+      toast.error("Server error updating expense");
     }
   };
 
-  // -------------------------------------------------------------
+  // ------------------------------------------------------------------
   // DELETE EXPENSE
-  // -------------------------------------------------------------
-  const deleteExpense = async (id: string) => {
+  // ------------------------------------------------------------------
+  const deleteExpense = async (id: string): Promise<void> => {
     try {
       const token = localStorage.getItem("token");
 
-      const res = await fetch(`${API_URL}/${id}`, {
+      const res = await fetch(`${EXPENSE_API}/${id}`, {
         method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       if (!res.ok) {
@@ -128,17 +178,16 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({
         return;
       }
 
-      setExpenses((prev) => prev.filter((e) => e._id !== id));
+      setExpenses((prev) => prev.filter((exp) => exp._id !== id));
       toast.success("Expense deleted!");
-    } catch (error) {
-      console.error("Delete error:", error);
-      toast.error("Server error while deleting expense");
+    } catch (err) {
+      console.error(err);
+      toast.error("Server error deleting expense");
     }
   };
 
-  // -------------------------------------------------------------
-  // CONTEXT VALUE
-  // -------------------------------------------------------------
+  
+
   return (
     <ExpenseContext.Provider
       value={{
@@ -149,7 +198,7 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({
         fetchExpenses,
         categories: EXPENSE_CATEGORIES,
         monthlyBudget,
-        setMonthlyBudget,
+        updateMonthlyBudget,
       }}
     >
       {children}
@@ -157,13 +206,8 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({
   );
 };
 
-// -------------------------------------------------------------
-// CUSTOM HOOK
-// -------------------------------------------------------------
 export const useExpenses = () => {
-  const context = useContext(ExpenseContext);
-  if (!context) {
-    throw new Error("useExpenses must be used within an ExpenseProvider");
-  }
-  return context;
+  const ctx = useContext(ExpenseContext);
+  if (!ctx) throw new Error("useExpenses must be inside provider");
+  return ctx;
 };

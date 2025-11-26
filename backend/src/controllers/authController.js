@@ -29,6 +29,7 @@ export const registerUser = async (req, res) => {
       name,
       email,
       password: hashed,
+      profileImage: null, // default value
     });
 
     return res.status(201).json({
@@ -37,6 +38,7 @@ export const registerUser = async (req, res) => {
         _id: user._id,
         name: user.name,
         email: user.email,
+        profileImage: user.profileImage || null, // 🔥 include profile image
       },
       token: generateToken(user._id),
     });
@@ -69,6 +71,7 @@ export const loginUser = async (req, res) => {
         _id: user._id,
         name: user.name,
         email: user.email,
+        profileImage: user.profileImage || null,  // 🔥 FIXED — INCLUDE PROFILE IMAGE
       },
       token: generateToken(user._id),
     });
@@ -84,7 +87,14 @@ export const loginUser = async (req, res) => {
  */
 export const getMe = async (req, res) => {
   try {
-    return res.status(200).json({ user: req.user });
+    return res.status(200).json({
+      user: {
+        _id: req.user._id,
+        name: req.user.name,
+        email: req.user.email,
+        profileImage: req.user.profileImage || null, // 🔥 include here also
+      },
+    });
   } catch (error) {
     return res.status(500).json({ message: "Server error" });
   }
